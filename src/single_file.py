@@ -40,7 +40,7 @@ def build():
         s = s.replace('</body>', f"<script>document.addEventListener('DOMContentLoaded', function () {{\n{js}\n}});</script>\n</body>")
         # responsive sources: keep one size, embedded
         s = re.sub(r'<source type="image/webp" srcset="([^"]+)"[^>]*>', lambda m: f'<source type="image/webp" srcset="{data_uri(smallest(m.group(1)))}">', s)
-        s = re.sub(r'(src|content|data-img)="(img/[^"]+)"', lambda m: f'{m.group(1)}="{data_uri(m.group(2))}"', s)
+        s = re.sub(r'(src|content|data-img|href)="(img/[^"]+)"', lambda m: f'{m.group(1)}="{data_uri(m.group(2))}"', s)
         # links between pages point at the other single files
         s = re.sub(r'href="([\w-]+)\.html', lambda m: f'href="{m.group(1)}.html', s)
         open(os.path.join(OUT, name + '.html'), 'w').write(s)

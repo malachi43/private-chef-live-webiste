@@ -231,8 +231,260 @@
     window.addEventListener('load', function () { ST.refresh(); });
   }
 
-  if (G && ST) initMotion();
-  else {
+  /* ---------- First-visit intro: the chef loader ----------
+     The client's logo spins in -> plays while the page loads (spinner arcs, steam and spice from
+     the cloche, a coin-flip every few seconds, badge orbits, pointer tilts her, a tap spins her and
+     throws spice) -> "Dinner is served": a double spin, spice explodes, the panel lifts away on a
+     curve and the hero animates in underneath. */
+  var Intro = (function () {
+    var L = $('[data-loader]');
+    if (!L) return null;
+    var chef = $('.loader__chef', L), canvas = $('.loader__spice', L), ctx = canvas && canvas.getContext('2d');
+    var num = $('[data-ld-num]', L), line = $('[data-ld-line]', L), skip = $('[data-ld-skip]', L);
+    var flt = $('.loader__float', L), steam = $('.loader__steam', L), ringEl = $('.loader__ring', L);
+    var arcA = $('.loader__arc--a', L), arcB = $('.loader__arc--b', L);
+    var LINES = ['Warming up the kitchen', 'Grinding fresh ata rodo', 'Sharpening the knives', 'Stirring the jollof', 'Tasting for salt', 'Plating up'];
+    var COLORS = ['#E5683F', '#C8431A', '#F2B441', '#8E2A0B', '#1F6B4A', '#F3E9DD'];
+
+    /* spice particles on a canvas: round flecks, chilli slivers and little leaves */
+    var parts = [], raf = 0, dpr = Math.min(window.devicePixelRatio || 1, 2);
+    function size() { if (!canvas) return; canvas.width = innerWidth * dpr; canvas.height = innerHeight * dpr; }
+    function burst(x, y, n, power) {
+      if (!ctx) return;
+      n = lite ? Math.round(n / 2) : n;
+      for (var i = 0; i < n; i++) {
+        var a = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.5, v = (0.35 + Math.random()) * power;
+        parts.push({ x: x, y: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, r: 2 + Math.random() * 4.5, rot: Math.random() * 6, vr: (Math.random() - 0.5) * 0.3,
+          kind: Math.random() < 0.3 ? 1 : (Math.random() < 0.15 ? 2 : 0), c: COLORS[(Math.random() * COLORS.length) | 0], life: 1 });
+      }
+      if (!raf) raf = requestAnimationFrame(tick);
+    }
+    function tick() {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, innerWidth, innerHeight);
+      parts = parts.filter(function (p) { return p.life > 0 && p.y < innerHeight + 40; });
+      parts.forEach(function (p) {
+        p.vy += 0.32; p.vx *= 0.985; p.x += p.vx; p.y += p.vy; p.rot += p.vr; p.life -= 0.0085;
+        ctx.save(); ctx.globalAlpha = Math.max(p.life, 0); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = p.c;
+        ctx.beginPath();
+        if (p.kind === 1) ctx.ellipse(0, 0, p.r * 2.4, p.r * 0.8, 0, 0, Math.PI * 2);          // chilli sliver
+        else if (p.kind === 2) { ctx.moveTo(0, -p.r * 2); ctx.quadraticCurveTo(p.r * 1.6, 0, 0, p.r * 2); ctx.quadraticCurveTo(-p.r * 1.6, 0, 0, -p.r * 2); } // leaf
+        else ctx.arc(0, 0, p.r, 0, Math.PI * 2);                                                  // fleck
+        ctx.fill(); ctx.restore();
+      });
+      raf = parts.length ? requestAnimationFrame(tick) : 0;
+      if (!raf) ctx.clearRect(0, 0, innerWidth, innerHeight);
+    }
+    // a point on the logo, as fractions of its width and height (the cloche sits at about 0.80, 0.42)
+    function pt(nx, ny) { var r = chef.getBoundingClientRect(); return { x: r.left + nx * r.width, y: r.top + ny * r.height }; }
+
+    var loops = [], tl = null, done = null, running = false, leaving = false, shown = 0, t0 = 0, lastT = 0, lineI = 0, lineT = 0, onTick = null;
+
+    function progress() {
+      // real progress: first-screen images and fonts; time keeps it honest (min 2.6 s, max 6 s)
+      var imgs = $$('img').filter(function (i) { return i.loading !== 'lazy'; });
+      var ok = imgs.filter(function (i) { return i.complete; }).length;
+      var real = d.readyState === 'complete' ? 1 : 0.2 + 0.7 * (imgs.length ? ok / imgs.length : 1);
+      var t = (performance.now() - t0) / 1000;
+      if (t > 6) real = 1;
+      return Math.min(real, t / 2.6);
+    }
+
+    function play(cb) {
+      if (running) return; running = true; leaving = false; done = cb || function () {};
+      h.classList.add('intro'); L.classList.remove('is-fading'); L.style.removeProperty('--curve');
+      try { sessionStorage.setItem('pc-intro', '1'); } catch (e) {}
+      if (lenis) lenis.stop();
+      skip.tabIndex = 0; t0 = performance.now(); lastT = 0; shown = 0; lineI = 0; lineT = 0; num.textContent = '0'; line.textContent = LINES[0];
+      size();
+
+      if (!G || reduce) { // simple and calm: count up, then fade
+        var iv = setInterval(function () {
+          shown = Math.min(100, Math.round(progress() * 100)); num.textContent = shown;
+          if (shown >= 100) { clearInterval(iv); line.textContent = 'Dinner is served'; L.classList.add('is-fading'); setTimeout(finish, 520); }
+        }, 80);
+        return;
+      }
+      tl = G.timeline();
+      tl.from('.loader__aura', { opacity: 0, scale: 0.5, duration: 1.4, ease: 'expo.out' }, 0)
+        .from(flt, { scale: 0.15, rotation: -540, opacity: 0, duration: 1.6, ease: 'expo.out' }, 0.1)   // she spins in
+        .from(ringEl, { scale: 0.5, opacity: 0, duration: 1.2, ease: 'expo.out' }, 0.35)
+        .from('.loader__orbit', { opacity: 0, scale: 0.7, rotation: -60, duration: 1.4, ease: 'expo.out' }, 0.3)
+        .from('.loader__meta > *', { y: 24, opacity: 0, stagger: 0.08, duration: 0.8, ease: 'expo.out' }, 0.5)
+        .from(skip, { opacity: 0, duration: 0.6 }, 0.8);
+
+      loops = [
+        G.to('.loader__orbit', { rotation: 360, duration: 16, ease: 'none', repeat: -1 }),
+        // spinner arcs lap around her while the page loads
+        G.to(arcA, { rotation: 360, svgOrigin: '100 100', duration: 1.1, ease: 'none', repeat: -1 }),
+        G.to(arcB, { rotation: -360, svgOrigin: '100 100', duration: 7, ease: 'none', repeat: -1 }),
+        G.to(flt, { y: -14, duration: 1.4, yoyo: true, repeat: -1, ease: 'sine.inOut', delay: 1.6 }),
+        G.to(chef, { rotation: 3.5, transformOrigin: '50% 90%', duration: 1.8, yoyo: true, repeat: -1, ease: 'sine.inOut', delay: 1.6 }),
+        // a coin-flip every few seconds
+        G.timeline({ repeat: -1, repeatDelay: 2.2, delay: 2.4 }).to(chef, { rotationY: 360, duration: 0.9, ease: 'power3.inOut' }).set(chef, { rotationY: 0 }),
+        // steam and a pinch of spice from the cloche
+        G.timeline({ repeat: -1, repeatDelay: 0.5, delay: 1.7 })
+          .call(function () { var p = pt(0.8, 0.42); burst(p.x, p.y, 12, 6.5); })
+          .fromTo(steam, { opacity: 0, y: 10 }, { opacity: 0.9, y: -10, duration: 0.5 })
+          .to(steam, { opacity: 0, y: -36, duration: 0.8 })
+      ];
+
+      // pointer: she leans towards you in 3D; a tap anywhere throws spice
+      var tilt = $('.loader__tilt', L);
+      if (fine && !lite) {
+        var rx = G.quickTo(tilt, 'rotationX', { duration: 0.6, ease: 'power3' }), ry = G.quickTo(tilt, 'rotationY', { duration: 0.6, ease: 'power3' });
+        L.onpointermove = function (e) { ry((e.clientX / innerWidth - 0.5) * 26); rx(-(e.clientY / innerHeight - 0.5) * 18); };
+      }
+      L.onpointerdown = function (e) {
+        if (e.target.closest('[data-ld-skip]')) return;
+        burst(e.clientX, e.clientY, 34, 11);
+        if (!G.isTweening(flt)) G.to(flt, { rotation: '+=360', duration: 0.8, ease: 'back.out(1.6)' }); // a tap spins her
+        G.fromTo('.loader__center', { scale: 1 }, { scale: 1.05, duration: 0.12, yoyo: true, repeat: 1 });
+      };
+
+      onTick = function () {
+        if (leaving) return;
+        var now = performance.now(), dt = Math.min((now - (lastT || now)) / 1000, 0.1); lastT = now;
+        var target = progress() * 100;
+        // time-based, so slow phones still finish on time: ease towards the target, never slower than 45% a second
+        shown = Math.min(target, shown + Math.max((target - shown) * 5 * dt, 45 * dt));
+        if (now - t0 > 7000) shown = 100;
+        num.textContent = Math.floor(shown);
+        var lt = Math.floor((performance.now() - t0) / 650) % LINES.length;
+        if (lt !== lineT) { lineT = lt; line.textContent = LINES[lt]; G.fromTo(line, { y: 8, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35 }); }
+        if (shown >= 100) leave();
+      };
+      G.ticker.add(onTick);
+    }
+
+    function leave() {
+      if (leaving || !running) return; leaving = true;
+      G.ticker.remove(onTick);
+      num.textContent = '100'; line.textContent = 'Dinner is served';
+      loops.forEach(function (l) { l.kill(); }); loops = [];
+      if (tl) tl.progress(1);
+      G.timeline({ onComplete: finish })
+        .to(flt, { rotation: '+=720', scale: 1.12, duration: 1, ease: 'power3.inOut' }, 0)    // a big double spin
+        .call(function () { var p = pt(0.8, 0.42); burst(p.x, p.y, 90, 15); }, null, 0.35)
+        .fromTo(steam, { opacity: 0, y: 0 }, { opacity: 1, y: -30, duration: 0.5 }, 0.3)
+        .to(ringEl, { scale: 1.5, opacity: 0, duration: 0.8, ease: 'power2.out' }, 0.2)
+        .to('.loader__center', { scale: 1.06, duration: 0.3, yoyo: true, repeat: 1, ease: 'power2.out' }, 0.3)
+        .to(line, { scale: 1.06, duration: 0.2, yoyo: true, repeat: 1 }, 0)
+        .call(function () { var cb = done; done = null; if (cb) cb(); }, null, 1) // hero starts as the panel lifts
+        .to(L, { yPercent: -108, '--curve': '24vh', duration: 1, ease: 'expo.inOut' }, 0.9);
+    }
+
+    function finish() {
+      running = false;
+      h.classList.remove('intro'); skip.tabIndex = -1;
+      if (G) G.set([L, '.loader__center', '.loader__tilt', '.loader__orbit', '.loader__meta > *', skip, flt, chef, steam, ringEl, arcA, arcB], { clearProps: 'all' });
+      L.classList.remove('is-fading'); L.onpointermove = L.onpointerdown = null;
+      if (lenis) lenis.start();
+      if (done) { var cb = done; done = null; cb(); }
+    }
+
+    skip.addEventListener('click', function () { if (!G || reduce) { L.classList.add('is-fading'); setTimeout(finish, 400); } else leave(); });
+    d.addEventListener('keydown', function (e) { if (e.key === 'Escape' && running) skip.click(); });
+    window.addEventListener('resize', size);
+    return { play: play, active: function () { return h.classList.contains('intro'); } };
+  })();
+
+  /* ---------- Spicy footer ----------
+     Heat lamp over the giant wordmark, a burst of spice on tap (only then: no ambient
+     flying spice, by request), magnetic social icons. Runs only while the footer is on screen. */
+  (function () {
+    var F = $('[data-spicy]'); if (!F) return;
+    var word = $('.foot__word', F), cv = $('.foot__spice', F), cx = cv && cv.getContext('2d');
+    var COLORS = ['#E5683F', '#C8431A', '#F2B441', '#8E2A0B', '#21A06A'];
+    var dpr = Math.min(window.devicePixelRatio || 1, 2), W = 0, H = 0, parts = [], on = false, raf = 0;
+    var heat = { x: -0.5, y: 0.5, r: 0, tx: -0.5, ty: 0.5, tr: 0 }, lastMove = 0, sweepT = 0;
+
+    function size() { if (!cv) return; var r = F.getBoundingClientRect(); W = r.width; H = r.height; cv.width = W * dpr; cv.height = H * dpr; }
+    function add(x, y, vx, vy, kind, life, r) {
+      parts.push({ x: x, y: y, vx: vx, vy: vy, kind: kind, life: life, max: life, r: r || 1.5 + Math.random() * 3,
+        rot: Math.random() * 6, vr: (Math.random() - 0.5) * 0.2, c: COLORS[(Math.random() * COLORS.length) | 0], seed: Math.random() * 10 });
+    }
+    function burst(x, y, n, power) {
+      for (var i = 0; i < n; i++) {
+        var a = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.6, v = (0.4 + Math.random()) * power;
+        add(x, y, Math.cos(a) * v, Math.sin(a) * v, Math.random() < 0.35 ? 1 : 0, 90 + Math.random() * 50, 2 + Math.random() * 4);
+      }
+    }
+    function local(e) { var r = F.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+
+    function frame(t) {
+      raf = on ? requestAnimationFrame(frame) : 0;
+      // heat lamp: follow the pointer, or sweep slowly when nobody is pointing (touch, idle)
+      if (performance.now() - lastMove > 2600 && !reduce) {
+        sweepT += 0.0045; heat.tx = 0.5 + Math.sin(sweepT) * 0.55; heat.ty = 0.5 + Math.sin(sweepT * 2.3) * 0.15; heat.tr = 220;
+      }
+      heat.x += (heat.tx - heat.x) * 0.08; heat.y += (heat.ty - heat.y) * 0.08; heat.r += (heat.tr - heat.r) * 0.08;
+      word.style.setProperty('--hx', (heat.x * 100).toFixed(2) + '%');
+      word.style.setProperty('--hy', (heat.y * 100).toFixed(2) + '%');
+      word.style.setProperty('--hr', heat.r.toFixed(1) + 'px');
+      if (!cx || reduce) return;
+      cx.setTransform(dpr, 0, 0, dpr, 0, 0); cx.clearRect(0, 0, W, H);
+      parts = parts.filter(function (p) { return p.life > 0 && p.y > -20 && p.y < H + 30; });
+      parts.forEach(function (p) {
+        p.life--;
+        if (p.kind === 2) { p.vx += Math.sin((t / 600) + p.seed) * 0.02; } else { p.vy += 0.22; p.vx *= 0.985; }
+        p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+        var k = p.life / p.max;
+        cx.save(); cx.translate(p.x, p.y); cx.rotate(p.rot);
+        if (p.kind === 2) { // glowing ember
+          var flick = 0.55 + 0.45 * Math.sin(t / 90 + p.seed * 7);
+          cx.globalAlpha = Math.min(1, k * 1.6) * flick; cx.fillStyle = p.c;
+          cx.shadowColor = '#E5683F'; cx.shadowBlur = 10;
+          cx.beginPath(); cx.arc(0, 0, p.r, 0, Math.PI * 2); cx.fill();
+        } else {            // spice: flecks and chilli slivers
+          cx.globalAlpha = Math.min(1, k * 2); cx.fillStyle = p.c; cx.beginPath();
+          if (p.kind === 1) cx.ellipse(0, 0, p.r * 2.3, p.r * 0.75, 0, 0, Math.PI * 2); else cx.arc(0, 0, p.r, 0, Math.PI * 2);
+          cx.fill();
+        }
+        cx.restore();
+      });
+    }
+    function start() { if (on) return; on = true; size(); raf = requestAnimationFrame(frame); }
+    function stop() { on = false; }
+    if ('IntersectionObserver' in window) new IntersectionObserver(function (es) { es[0].isIntersecting ? start() : stop(); }, { rootMargin: '80px' }).observe(F);
+    else start();
+    window.addEventListener('resize', function () { if (on) size(); });
+
+    // pointer: the heat lamp follows
+    F.addEventListener('pointermove', function (e) {
+      lastMove = performance.now();
+      var r = word.getBoundingClientRect();
+      heat.tx = (e.clientX - r.left) / r.width; heat.ty = (e.clientY - r.top) / r.height;
+      heat.tr = e.clientY > r.top - 140 ? 280 : 170;   // bigger lamp when you are over the letters
+    });
+    F.addEventListener('pointerleave', function () { heat.tr = 0; lastMove = performance.now(); });
+    // tap anywhere that is not a link: a burst of spice (and a flare of heat)
+    F.addEventListener('pointerdown', function (e) {
+      if (reduce || e.target.closest('a, button, input')) return;
+      var p = local(e); burst(p.x, p.y, 40, 9); heat.r = 420;
+    });
+    // the footer chef: spins on hover (CSS) and throws a little spice
+    var chef = $('.logo__chef', F);
+    if (chef) chef.closest('a').addEventListener('pointerenter', function () {
+      if (reduce) return; var r = chef.getBoundingClientRect(), f = F.getBoundingClientRect();
+      burst(r.left - f.left + r.width / 2, r.top - f.top + r.height / 3, 18, 6);
+    });
+    // social icons pull towards the pointer
+    if (fine && !reduce && G) $$('.socials a', F).forEach(function (a) {
+      var mx = G.quickTo(a, 'x', { duration: 0.4, ease: 'power3' }), my = G.quickTo(a, 'y', { duration: 0.4, ease: 'power3' });
+      a.addEventListener('pointermove', function (e) { var r = a.getBoundingClientRect(); mx((e.clientX - r.left - r.width / 2) * 0.45); my((e.clientY - r.top - r.height / 2) * 0.45); });
+      a.addEventListener('pointerleave', function () { mx(0); my(0); });
+    });
+  })();
+
+  $$('[data-replay-intro]').forEach(function (b) {
+    b.addEventListener('click', function () { if (!Intro) return; window.scrollTo(0, 0); if (lenis) lenis.scrollTo(0, { immediate: true }); Intro.play(); });
+  });
+
+  if (G && ST) {
+    if (Intro && Intro.active()) { arriving = true; Intro.play(initMotion); } // hero animates in as the loader lifts
+    else initMotion();
+  } else {
+    if (Intro && Intro.active()) Intro.play();
     h.classList.add('motion-off');
     $$('[data-count]').forEach(function (el) { el.textContent = (el.dataset.prefix || '') + (+el.dataset.count).toLocaleString('en-NG') + (el.dataset.suffix || ''); });
   }

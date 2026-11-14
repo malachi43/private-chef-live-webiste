@@ -73,16 +73,21 @@ def icons(s):
     return s
 
 
-LOCKUP = open(os.path.join(ROOT, '05-brand-assets', 'logos', 'svg', 'pc-lockup.svg')).read()
-WORD_PATHS = re.search(r'<g fill="#1A1613">(.*?)</g>', LOCKUP, re.S).group(1)
-MARK = ('<path d="M24 4a11 11 0 0 1 10.4 7.4A9 9 0 0 1 35 29.3V33H13v-3.7a9 9 0 0 1 .6-17.9A11 11 0 0 1 24 4Z"/>'
-        '<rect x="13" y="36" width="22" height="7" rx="2.5"/>')
+# The logo is the client's chosen chef (supplied 10 November 2026), used exactly as supplied.
+# Images are exported by 05-brand-assets/logos/source/export_png.js into img/.
+WORDMARK = open(os.path.join(ROOT, '05-brand-assets', 'logos', 'svg', 'pc-wordmark.svg')).read()
+WORD_PATHS = re.search(r'<g fill="#1A1613">(.*?)</g>', WORDMARK, re.S).group(1)
+
+
+def chef_img(cls, w=192, eager=True):
+    return (f'<img class="{cls}" src="img/logo-chef-{w}.png" alt="" width="{w}" height="{round(w * 1.097)}"'
+            f' decoding="async"{"" if eager else " loading=lazy"}>')
 
 
 def logo(cls='logo'):
-    """Lockup with the wordmark in currentColor, so it follows light and dark grounds."""
-    return (f'<svg class="{cls}" viewBox="0 0 220.4 48" role="img" aria-label="Private Chef">'
-            f'<g class="logo__mark">{MARK}</g><g fill="currentColor">{WORD_PATHS}</g></svg>')
+    """Lockup: the client's chef logo plus the wordmark in currentColor (follows light and dark grounds)."""
+    return (f'<span class="{cls}" role="img" aria-label="Private Chef">{chef_img("logo__chef")}'
+            f'<svg class="logo__word" viewBox="60 4 160.4 40" aria-hidden="true"><g fill="currentColor">{WORD_PATHS}</g></svg></span>')
 
 
 def wordmark(cls='wordmark'):
@@ -90,7 +95,30 @@ def wordmark(cls='wordmark'):
 
 
 def mark(cls='mark'):
-    return f'<svg class="{cls}" viewBox="0 0 48 48" aria-hidden="true"><g fill="currentColor">{MARK}</g></svg>'
+    return chef_img(cls)
+
+
+def loader():
+    """First-visit intro: the full chef assembles, plays while the page loads, then lifts away."""
+    return f'''<div class="loader" data-loader aria-hidden="true">
+  <div class="loader__aura"></div>
+  <canvas class="loader__spice"></canvas>
+  <div class="loader__center">
+    <svg class="loader__orbit" viewBox="0 0 400 400"><defs><path id="ld-orbit" d="M200 200m-182 0a182 182 0 1 1 364 0a182 182 0 1 1 -364 0"/></defs><text><textPath href="#ld-orbit" textLength="1136">PRIVATE CHEF ✦ MADE IN LAGOS ✦ COOKED WITH LOVE ✦ </textPath></text></svg>
+    <svg class="loader__ring" viewBox="0 0 200 200" aria-hidden="true"><defs><linearGradient id="ld-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F2B441"/><stop offset=".5" stop-color="#E5683F"/><stop offset="1" stop-color="#C8431A"/></linearGradient></defs>
+      <circle class="loader__arc loader__arc--a" cx="100" cy="100" r="94" pathLength="100"/><circle class="loader__arc loader__arc--b" cx="100" cy="100" r="86" pathLength="100"/></svg>
+    <div class="loader__tilt"><div class="loader__float">
+      <img class="loader__chef" src="img/logo-chef-1000.webp" alt="" width="1000" height="1097" decoding="async" fetchpriority="high">
+      <svg class="loader__steam" viewBox="0 0 100 60" aria-hidden="true"><g fill="none" stroke="#F3E9DD" stroke-width="4" stroke-linecap="round"><path d="M30 58 q-8 -12 0 -24 q8 -12 0 -24"/><path d="M50 58 q-8 -14 0 -28 q8 -14 0 -28"/><path d="M70 58 q-8 -12 0 -24 q8 -12 0 -24"/></g></svg>
+    </div></div>
+  </div>
+  <div class="loader__meta">
+    <span class="loader__num"><b data-ld-num>0</b><i>%</i></span>
+    <span class="loader__line" data-ld-line>Warming up the kitchen</span>
+    <span class="loader__hint">Tap anywhere to add some spice</span>
+  </div>
+  <button class="loader__skip" type="button" data-ld-skip tabindex="-1">Skip intro</button>
+</div>'''
 
 
 def app_buttons(extra=''):
@@ -180,7 +208,8 @@ def footer():
             ('Help', [('FAQ', 'faq.html'), ('Contact', 'contact.html'), ('Join', 'join.html')]),
             ('Legal', [('Terms', 'terms.html'), ('Privacy', 'privacy.html')])]
     colhtml = ''.join(f'<div class="foot__col"><h3>{h}</h3><ul>' + ''.join(f'<li><a href="{u}">{t}</a></li>' for t, u in links) + '</ul></div>' for h, links in cols)
-    return f'''<footer class="foot g-cocoa grain" data-ground="dark">
+    return f'''<footer class="foot g-cocoa grain" data-ground="dark" data-spicy>
+  <canvas class="foot__spice" aria-hidden="true"></canvas>
   <div class="foot__inner">
     <div class="foot__top">
       <div class="foot__brand">
@@ -200,9 +229,9 @@ def footer():
         </dl>
       </div>
     </div>
-    <div class="foot__base"><span>© 2026 Private Chef. Made in Lagos.</span><span class="foot__legal"><a href="terms.html">Terms</a><a href="privacy.html">Privacy</a></span></div>
+    <div class="foot__base"><span>© 2026 Private Chef. Made in <span class="foot__lagos">Lagos</span>.</span><span class="foot__legal"><a href="terms.html">Terms</a><a href="privacy.html">Privacy</a></span></div>
   </div>
-  <div class="foot__word" aria-hidden="true">{wordmark()}</div>
+  <div class="foot__word" aria-hidden="true">{wordmark()}<div class="foot__heat">{wordmark('wordmark')}</div><div class="foot__heat foot__heat--core">{wordmark('wordmark')}</div></div>
 </footer>'''
 
 
@@ -210,6 +239,7 @@ REVIEW = '''<div class="review" role="group" aria-label="Review: choose the site
   <span class="review__label">Review</span>
   <button type="button" data-ver="1" aria-pressed="true">v1 Waitlist</button>
   <button type="button" data-ver="2" aria-pressed="false">v2 Launch</button>
+  <button type="button" class="review__replay" data-replay-intro aria-label="Replay the intro">↻ Intro</button>
 </div>'''
 
 FONTS = ('<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
@@ -219,8 +249,10 @@ LIBS = ('<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.mi
         '<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js" defer></script>'
         '<script src="assets/site.js" defer></script>')
 BOOT = ("<script>(function(d){var h=d.documentElement,v='1';try{v=localStorage.getItem('pc-ver')||'1'}catch(e){}"
-        "h.dataset.v=v;h.classList.add('js');try{if(sessionStorage.getItem('pc-wipe')){h.classList.add('is-arriving');sessionStorage.removeItem('pc-wipe')}}catch(e){}"
-        "setTimeout(function(){if(!h.classList.contains('motion-ready'))h.classList.add('motion-off')},3000)})(document)</script>")
+        "h.dataset.v=v;h.classList.add('js');var n=false;try{n=!sessionStorage.getItem('pc-intro')&&!sessionStorage.getItem('pc-wipe');"
+        "if(sessionStorage.getItem('pc-wipe')){h.classList.add('is-arriving');sessionStorage.removeItem('pc-wipe')}}catch(e){}"
+        "if(/[?&]intro=1/.test(location.search))n=true;if(n)h.classList.add('intro');"
+        "setTimeout(function(){if(!h.classList.contains('motion-ready')){h.classList.add('motion-off');h.classList.remove('intro')}},n?9000:3000)})(document)</script>")
 
 
 def head(p):
@@ -228,11 +260,12 @@ def head(p):
     return (f'<title>{t}</title>\n<meta name="description" content="{html.escape(p["desc"])}">\n'
             f'<meta property="og:title" content="{html.escape(p["title"])}"><meta property="og:description" content="{html.escape(p["desc"])}">'
             f'<meta property="og:image" content="img/hero-chef-1100.webp"><meta name="theme-color" content="#2A1C16">\n'
+            f'<link rel="icon" type="image/png" href="img/app-icon-64.png"><link rel="apple-touch-icon" href="img/app-icon-180.png">\n'
             f'{FONTS}\n<link rel="stylesheet" href="assets/site.css">\n{BOOT}\n{LIBS}')
 
 
 def body(p, content):
-    return (f'<a class="skip" href="#main">Skip to content</a>\n{nav(p["nav"])}\n<main id="main" class="page page--{p["nav"]}">\n{content}\n</main>\n'
+    return (f'<a class="skip" href="#main">Skip to content</a>\n{loader()}\n{nav(p["nav"])}\n<main id="main" class="page page--{p["nav"]}">\n{content}\n</main>\n'
             + (band(p) if p.get('band', True) else '') + f'\n{footer()}\n{REVIEW}\n<div class="wipe" aria-hidden="true">{mark("wipe__mark")}</div>')
 
 
@@ -276,6 +309,7 @@ def build():
         '/* Private Chef website. Generated by src/build.py: edit src/site.css, not this file. */\n'
         + tokens_css() + '\n' + bundle + '\n' + site_css)
     open(os.path.join(SITE, 'assets', 'site.js'), 'w').write(open(os.path.join(HERE, 'site.js')).read())
+    # logo images (img/logo-chef-*.png|webp, img/app-icon-*.png) come from 05-brand-assets/logos/source/export_png.js
 
     pages = []
     for f in sorted(glob.glob(os.path.join(HERE, 'pages', '*.html'))):
