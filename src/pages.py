@@ -308,6 +308,57 @@ def lagos_map():
 </svg>'''
 
 
+# ---------- Market map (For chefs): food markets near the client, for Chef at Home shopping ----------
+MARKETS = [
+    # key, name, distance from client, travel, hours, known for, pin x, y, route (chef -> market -> client area)
+    ('lekki', 'Lekki Market', '1.2 km', '6 min drive', 'Open until 7pm', ['Fresh fish', 'Peppers', 'Grains'], 440, 118,
+     'M80 300C150 300 200 250 250 190S370 112 440 118C430 160 400 190 372 206'),
+    ('ilasan', 'Ilasan Market', '1.8 km', '9 min drive', 'Open until 6pm', ['Vegetables', 'Spices', 'Palm oil'], 196, 112,
+     'M80 300C96 240 130 160 196 112C236 140 266 172 290 196'),
+    ('jakande', 'Jakande Market', '2.4 km', '12 min drive', 'Open until 8pm', ['Meat', 'Snails', 'Plantain'], 524, 286,
+     'M80 300C200 336 380 346 524 286C474 262 424 248 388 240'),
+]
+
+
+def market_map():
+    pins, routes, chips, data = '', '', '', ''
+    for i, (k, n, d, t, h, tags, x, y, r) in enumerate(MARKETS):
+        pins += (f'<g class="mm-pin" data-mm-pin="{k}" transform="translate({x} {y})">'
+                 f'<circle class="mm-pin__halo" r="22"/>'
+                 f'<path class="mm-pin__body" d="M0 -30c-11 0-19 8-19 19 0 14 19 31 19 31s19-17 19-31c0-11-8-19-19-19z"/>'
+                 f'<path class="mm-pin__basket" d="M-8 -16h16l-2 9h-12z M-5 -16l3-6 M5 -16l-3-6"/></g>')
+        routes += f'<path class="mm-route" data-mm-route="{k}" d="{r}" pathLength="1"/>'
+        chips += (f'<button type="button" class="mm-chip" role="radio" aria-checked="{"true" if i == 0 else "false"}" data-mm="{k}">'
+                  f'{{{{f:storefront|pc-i--sm}}}}<span><b>{n}</b><small>{d}</small></span></button>')
+        tag_html = ''.join(f'<i>{x}</i>' for x in tags)
+        data += (f'<template data-mm-info="{k}"><b class="mm-sheet__t">{n}</b>'
+                 f'<span class="mm-sheet__m">{d} from your client · {t} · {h}</span>'
+                 f'<span class="mm-sheet__tags">{tag_html}</span></template>')
+    return (
+        '<div class="mmap" data-mmap><div class="mmap__map">'
+        '<svg class="mm" viewBox="0 0 600 460" role="img" aria-label="Map showing three food markets near a client\'s home in Lekki, '
+        'with a route from the chef to the market and on to the client">'
+        '<rect class="mm__ground" width="600" height="460"/>'
+        '<path class="mm__water" d="M0 0H600V58C520 74 440 62 360 70S200 96 120 84 30 60 0 64Z"/>'
+        '<path class="mm__park" d="M420 380c30-18 80-20 110 4s20 60-20 66-110-40-90-70z"/>'
+        '<path class="mm__park" d="M40 180c24-16 64-12 74 12s-14 46-44 44-52-36-30-56z"/>'
+        '<g class="mm__roads"><path d="M0 120C150 110 300 116 600 104"/><path d="M0 300C200 290 400 276 600 262"/>'
+        '<path d="M110 460C140 340 150 220 170 0"/><path d="M330 460C320 330 330 200 352 0"/>'
+        '<path d="M480 460C500 340 520 220 560 70"/><path d="M0 410C200 400 400 420 600 400"/></g>'
+        '<g class="mm__minor"><path d="M0 210C200 200 400 196 600 186"/><path d="M240 460C250 340 236 200 262 70"/>'
+        '<path d="M420 460C420 360 424 250 450 90"/></g>'
+        f'{routes}'
+        '<g class="mm-area"><circle class="mm-area__ring" cx="330" cy="232" r="56"/><circle class="mm-area__dot" cx="330" cy="232" r="9"/>'
+        '<text class="mm-label" x="330" y="312" text-anchor="middle">Your client · approximate area</text></g>'
+        '<g class="mm-chef" transform="translate(80 300)"><circle r="17"/><text class="mm-chef__t" y="5" text-anchor="middle">You</text></g>'
+        f'{pins}</svg>'
+        '<div class="mm-sheet glass-card" aria-live="polite"><span class="mm-sheet__ic">{{f:storefront}}</span>'
+        '<div class="mm-sheet__body"></div><span class="mm-sheet__go">{{f:navigation-arrow}}<small>Start</small></span></div>'
+        f'{data}</div>'
+        f'<div class="mmap__chips" role="radiogroup" aria-label="Markets near your client">{chips}</div></div>'
+    )
+
+
 def phone(screens):
     return f'<div class="phone" aria-hidden="true"><div class="phone__notch"></div><div class="phone__screens">{screens}</div></div>'
 
@@ -405,7 +456,7 @@ def expand(s):
     s = re.sub(r'<!--FAQ:([^:>]*):?(\d*)-->', lambda m: faq_list(m.group(1).split(',') if m.group(1) != 'all' else None, int(m.group(2)) if m.group(2) else None), s)
     s = re.sub(r'<!--WAITLIST:(\w+):(\w+)(:noseg)?-->', lambda m: waitlist(m.group(1), m.group(2), seg=not m.group(3)), s)
     s = s.replace('<!--CONTACTFORM-->', contact_form()).replace('<!--PLANS-->', plans()).replace('<!--VERIFY-->', verify())
-    s = s.replace('<!--WEEK-->', week()).replace('<!--MAP-->', lagos_map())
+    s = s.replace('<!--WEEK-->', week()).replace('<!--MAP-->', lagos_map()).replace('<!--MARKETMAP-->', market_map())
     s = s.replace('<!--PHONE:steps-->', phone(STEPS_PHONE)).replace('<!--PHONE:app-->', phone(APP_PHONE))
     s = re.sub(r'<!--LEGAL:(\w+)-->', lambda m: legal(m.group(1)), s)
     s = re.sub(r'<!--LSWITCH:(\w+)-->', lambda m: legal_switch(m.group(1)), s)

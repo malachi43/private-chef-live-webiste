@@ -388,6 +388,48 @@
     return { play: play, active: function () { return h.classList.contains('intro'); } };
   })();
 
+  /* ---------- Market map (For chefs): tap a market to see its route and details ---------- */
+  $$('[data-mmap]').forEach(function (m) {
+    var chips = $$('.mm-chip', m), body = $('.mm-sheet__body', m), auto = null, cur = null;
+    function show(k, user) {
+      if (user && auto) { clearInterval(auto); auto = null; }
+      if (k === cur) return; cur = k;
+      chips.forEach(function (c) { c.setAttribute('aria-checked', String(c.dataset.mm === k)); });
+      $$('[data-mm-pin]', m).forEach(function (p) { p.classList.toggle('is-on', p.dataset.mmPin === k); });
+      $$('[data-mm-route]', m).forEach(function (r) {
+        r.classList.remove('is-on');
+        if (r.dataset.mmRoute === k) { void r.getBoundingClientRect(); r.classList.add('is-on'); }
+      });
+      var t = $('[data-mm-info="' + k + '"]', m);
+      body.innerHTML = t ? t.innerHTML : '';
+      body.classList.remove('is-swap'); void body.offsetWidth; body.classList.add('is-swap');
+    }
+    chips.forEach(function (c, i) {
+      c.addEventListener('click', function () { show(c.dataset.mm, true); });
+      c.addEventListener('keydown', function (e) { // arrow keys move between markets, like a radio group
+        var d = (e.key === 'ArrowRight' || e.key === 'ArrowDown') ? 1 : (e.key === 'ArrowLeft' || e.key === 'ArrowUp') ? -1 : 0;
+        if (!d) return;
+        e.preventDefault();
+        var n = chips[(i + d + chips.length) % chips.length]; n.focus(); show(n.dataset.mm, true);
+      });
+    });
+    $$('[data-mm-pin]', m).forEach(function (p) { p.addEventListener('click', function () { show(p.dataset.mmPin, true); }); });
+    show(chips[0].dataset.mm);
+    // gently tour the markets until someone taps one, only while the map is on screen
+    if (!reduce && 'IntersectionObserver' in window) {
+      var touched = false;
+      m.addEventListener('pointerdown', function () { touched = true; if (auto) { clearInterval(auto); auto = null; } });
+      new IntersectionObserver(function (es) {
+        if (es[0].isIntersecting && !auto && !touched) {
+          auto = setInterval(function () {
+            var i = chips.findIndex(function (c) { return c.dataset.mm === cur; });
+            show(chips[(i + 1) % chips.length].dataset.mm);
+          }, 4200);
+        } else if (!es[0].isIntersecting && auto) { clearInterval(auto); auto = null; }
+      }, { threshold: 0.4 }).observe(m);
+    }
+  });
+
   /* ---------- Spicy footer ----------
      Heat lamp over the giant wordmark, a burst of spice on tap (only then: no ambient
      flying spice, by request), magnetic social icons. Runs only while the footer is on screen. */

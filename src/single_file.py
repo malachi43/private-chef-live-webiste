@@ -38,8 +38,12 @@ def build():
         s = s.replace('<script src="assets/site.js" defer></script>', '')
         # run after the deferred motion libraries, as the linked version does
         s = s.replace('</body>', f"<script>document.addEventListener('DOMContentLoaded', function () {{\n{js}\n}});</script>\n</body>")
-        # responsive sources: keep one size, embedded
-        s = re.sub(r'<source type="image/webp" srcset="([^"]+)"[^>]*>', lambda m: f'<source type="image/webp" srcset="{data_uri(smallest(m.group(1)))}">', s)
+        # the vector logo appears many times; embedding it at each use bloats the file, so offline copies use the sharp 192px PNG
+        s = s.replace('img/logo-chef.svg', 'img/logo-chef-192.png')
+        # responsive pictures: keep one WebP size and drop the JPEG fallback (every current browser reads WebP),
+        # so each photo is embedded once instead of twice
+        s = re.sub(r'<picture><source type="image/webp" srcset="([^"]+)"[^>]*>(<img [^>]*?)src="img/[^"]+"',
+                   lambda m: f'<picture>{m.group(2)}src="{smallest(m.group(1))}"', s)
         s = re.sub(r'(src|content|data-img|href)="(img/[^"]+)"', lambda m: f'{m.group(1)}="{data_uri(m.group(2))}"', s)
         # links between pages point at the other single files
         s = re.sub(r'href="([\w-]+)\.html', lambda m: f'href="{m.group(1)}.html', s)

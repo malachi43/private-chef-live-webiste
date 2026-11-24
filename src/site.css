@@ -336,8 +336,6 @@ html.js:not(.motion-off) [data-unmask] { clip-path: inset(100% 0 0 0); }
 @keyframes float { 50% { transform: translateY(-10px) rotate(4deg); } }
 .hero__badge { position: absolute; right: 4%; top: 2%; width: 112px; color: var(--on-cocoa); }
 .hero__badge .badge-ring text { font-size: 11px; }
-.hero__badgemark { position: absolute; inset: 0; display: grid; place-items: center; }
-.hero__badgemark .pc-i { width: 40px; height: 40px; padding: 9px; border-radius: 50%; background: var(--accent); color: #FFFFFF; }
 .hero__note { position: absolute; left: 4%; top: 30%; max-width: 270px; }
 .hero__noteok .pc-i { color: var(--success); width: 22px; height: 22px; }
 @media (max-width: 980px) {
@@ -495,7 +493,6 @@ html.js:not(.motion-off) [data-unmask] { clip-path: inset(100% 0 0 0); }
 .phero__art { position: relative; justify-self: center; width: min(100%, 440px); }
 .phero__arch { box-shadow: 0 40px 80px rgba(0, 0, 0, 0.4); }
 .phero__badge { position: absolute; right: -8%; top: -6%; width: 128px; color: var(--saffron); }
-.phero__badgemid { position: absolute; inset: 0; display: grid; place-items: center; font-size: 34px; font-weight: 700; color: var(--on-cocoa); }
 .phero__chip { position: absolute; left: -14%; bottom: 12%; }
 .phero__art--plate { aspect-ratio: 1; }
 .phero__ring { position: absolute; inset: 6%; border-radius: 50%; border: 1.5px dashed rgba(245, 241, 236, 0.22); animation: spin 60s linear infinite; }
@@ -942,3 +939,70 @@ html.js:not(.motion-off) [data-unmask] { clip-path: inset(100% 0 0 0); }
 .foot__lagos { transition: color 300ms, text-shadow 300ms; cursor: default; }
 .foot__lagos:hover { color: var(--saffron); text-shadow: 0 0 12px rgba(229, 104, 63, 0.9), 0 -2px 18px rgba(200, 67, 26, 0.6); }
 @media (prefers-reduced-motion: reduce) { .foot__spice { display: none; } .foot .socials a:hover .pc-i { animation: none; } }
+
+
+/* ---------- Rotating badges: the logo sits still in the middle while the words turn ---------- */
+.hero__badge, .teaser__badge, .phero__badge, .band__badge { aspect-ratio: 1; }
+.badge-logo { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+.badge-logo::before { content: ""; position: absolute; width: 60%; aspect-ratio: 1; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #FFFFFF, var(--shea) 70%);
+  box-shadow: 0 10px 24px rgba(20, 12, 8, 0.35), 0 0 0 3px rgba(255, 255, 255, 0.12); }
+.badge-logo img { position: relative; width: 46%; height: auto; transform: translateY(-2%); filter: drop-shadow(0 2px 3px rgba(42, 28, 22, 0.18));
+  transition: transform 600ms var(--ease-spring); }
+.hero__badge:hover .badge-logo img, .phero__badge:hover .badge-logo img, .teaser__badge:hover .badge-logo img { transform: translateY(-2%) rotate(-8deg) scale(1.08); }
+
+/* ---------- Market map (For chefs) ---------- */
+.mmsec__grid { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: clamp(40px, 6vw, 96px); align-items: center; }
+.mmsec__copy { display: grid; gap: 22px; justify-items: start; }
+.mmsec__list { display: grid; gap: 12px; color: var(--on-cocoa); font-size: 16px; }
+.mmsec__list li { display: flex; gap: 10px; align-items: flex-start; }
+.mmsec__list .pc-i { flex: none; margin-top: 3px; color: var(--ember); }
+.mmsec__note { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: var(--radius-full); background: rgba(242, 180, 65, 0.12); color: var(--saffron); font-size: 13px; font-weight: 600; }
+.mmap { display: grid; gap: 14px; }
+.mmap__map { position: relative; border-radius: 32px; overflow: hidden; box-shadow: 0 40px 80px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.08); }
+.mm { display: block; width: 100%; height: auto; }
+.mm__ground { fill: #EFE6DA; }
+.mm__water { fill: #CFE2D8; }
+.mm__park { fill: #D9E5CB; }
+.mm__roads path { fill: none; stroke: #FFFFFF; stroke-width: 14; stroke-linecap: round; }
+.mm__minor path { fill: none; stroke: #FFFFFF; stroke-width: 6; stroke-linecap: round; opacity: 0.9; }
+.mm-route { fill: none; stroke: var(--accent); stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; opacity: 0; }
+.mm-route.is-on { opacity: 1; animation: mm-draw 1.4s var(--ease-out) forwards; }
+@keyframes mm-draw { to { stroke-dashoffset: 0; } }
+.mm-area__ring { fill: rgba(200, 67, 26, 0.1); stroke: var(--accent); stroke-width: 2; stroke-dasharray: 6 6; transform-box: fill-box; transform-origin: center; animation: mm-breathe 3s ease-in-out infinite; }
+@keyframes mm-breathe { 50% { transform: scale(1.08); } }
+.mm-area__dot { fill: var(--accent); stroke: #FFFFFF; stroke-width: 4; }
+.mm-label { font: 600 13px var(--font-sans); fill: var(--cocoa); paint-order: stroke; stroke: #EFE6DA; stroke-width: 5px; }
+.mm-chef circle { fill: var(--cocoa); stroke: #FFFFFF; stroke-width: 4; }
+.mm-chef__t { font: 700 11px var(--font-sans); fill: #FFFFFF; }
+.mm-pin { cursor: pointer; }
+.mm-pin__halo { fill: rgba(31, 107, 74, 0.18); transform-box: fill-box; transform-origin: center; transform: scale(0); transition: transform 400ms var(--ease-spring); }
+.mm-pin__body { fill: var(--palm-deep); stroke: #FFFFFF; stroke-width: 3; transition: fill 300ms; }
+.mm-pin__basket { fill: none; stroke: #FFFFFF; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.mm-pin.is-on .mm-pin__halo { transform: scale(1); }
+.mm-pin.is-on .mm-pin__body { fill: var(--accent); }
+.mm-pin:hover .mm-pin__body { fill: #1F6B4A; }
+.mm-pin.is-on:hover .mm-pin__body { fill: var(--accent); }
+.mm-sheet { position: absolute; left: 14px; right: 14px; bottom: 14px; display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 22px; color: var(--ink); }
+.mm-sheet__ic { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; background: var(--palm-deep); color: #FFFFFF; }
+.mm-sheet__ic .pc-i { width: 22px; height: 22px; }
+.mm-sheet__body { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.mm-sheet__body.is-swap { animation: mm-swap 450ms var(--ease-out); }
+@keyframes mm-swap { from { opacity: 0; transform: translateY(8px); } }
+.mm-sheet__t { font: 700 16px var(--font-sans); }
+.mm-sheet__m { font-size: 13px; color: var(--ink-muted); }
+.mm-sheet__tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.mm-sheet__tags i { font-style: normal; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: var(--radius-full); background: rgba(31, 107, 74, 0.1); color: var(--palm-deep); }
+.mm-sheet__go { flex: none; display: grid; justify-items: center; gap: 2px; padding: 10px 12px; border-radius: 16px; background: var(--accent); color: #FFFFFF; }
+.mm-sheet .mm-sheet__go small { font-size: 11px; font-weight: 700; color: #FFFFFF; }
+.mmap__chips { display: flex; gap: 10px; flex-wrap: wrap; }
+.mm-chip { display: inline-flex; align-items: center; gap: 10px; padding: 10px 16px 10px 12px; border-radius: var(--radius-full); border: 1px solid rgba(245, 241, 236, 0.18); background: rgba(255, 255, 255, 0.05); color: var(--on-cocoa); font: inherit; cursor: pointer; text-align: left; transition: background 250ms, border-color 250ms, transform 250ms var(--ease-spring); }
+.mm-chip span { display: grid; line-height: 1.2; }
+.mm-chip b { font-size: 14px; } .mm-chip small { font-size: 12px; opacity: 0.7; }
+.mm-chip:hover { transform: translateY(-2px); border-color: rgba(245, 241, 236, 0.4); }
+.mm-chip[aria-checked="true"] { background: var(--shea); border-color: var(--shea); color: var(--cocoa); }
+.mm-chip[aria-checked="true"] .pc-i { color: var(--accent); }
+.mm-chip:focus-visible { outline: 2px solid var(--saffron); outline-offset: 3px; }
+@media (max-width: 980px) { .mmsec__grid { grid-template-columns: 1fr; } }
+@media (max-width: 700px) { .mmap__map { background: #EFE6DA; } .mm-sheet { position: relative; left: auto; right: auto; bottom: auto; margin: -8px 10px 10px; padding: 12px; gap: 12px; } .mm-sheet__ic { display: none; } .mm-chip { flex: 1 1 100%; } }
+@media (prefers-reduced-motion: reduce) { .mm-route.is-on { animation: none; stroke-dashoffset: 0; } .mm-area__ring { animation: none; } }
